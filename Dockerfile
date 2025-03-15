@@ -18,12 +18,13 @@ RUN .venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copia il contenuto del tuo progetto nella directory di lavoro del container
 COPY app/ /app/
+COPY .env /app/.env
 
 # Imposta la variabile d'ambiente per usare l'ambiente virtuale
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Espone la porta su cui Flask gira
-EXPOSE 5000
+EXPOSE 5001
 
 # Comando per avviare l'applicazione
 CMD ["python", "app.py"]

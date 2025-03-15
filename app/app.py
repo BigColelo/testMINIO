@@ -5,6 +5,13 @@ from minio.error import S3Error
 import os
 import io
 from flask_restx import Api, Resource, fields, abort
+from dotenv import load_dotenv
+import zipfile
+import tempfile
+import os
+
+# Carica le variabili d'ambiente dal file .env
+load_dotenv()
 
 app = Flask(__name__)
 # Configurazione di Flask-RestX
@@ -104,17 +111,50 @@ class FileUpload(Resource):
             abort(500, message=str(e))
 
 # Endpoint per scaricare un file
-@ns.route("/download/<string:filename>")
+@ns.route("/download/<string:filename_prefix>")
 class FileDownload(Resource):
     @ns.doc("download_file")
-    def get(self, filename):
-        """Scarica un file dal bucket."""
+    def get(self, filename_prefix):
+        """Download files that start with the given prefix from the bucket as a ZIP file."""
         try:
-            file_path = f"/tmp/{filename}"
-            minio_client.fget_object(MINIO_BUCKET_NAME, filename, file_path)
-            return send_file(file_path, as_attachment=True)
+            # List all objects that start with the given prefix
+            objects = minio_client.list_objects(MINIO_BUCKET_NAME, prefix=filename_prefix)
+            
+            # Get all matching files
+            matching_files = list(objects)
+            if not matching_files:
+                abort(404, message=f"No files found starting with '{filename_prefix}'")
+            
+            # Create a temporary directory to store files
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Create a ZIP file
+                zip_filename = f"{filename_prefix}.zip"
+                zip_path = os.path.join(temp_dir, zip_filename)
+                
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    # Download and add each file to the ZIP
+                    for file_obj in matching_files:
+                        filename = file_obj.object_name
+                        temp_file_path = os.path.join(temp_dir, filename)
+                        
+                        # Download the file
+                        minio_client.fget_object(MINIO_BUCKET_NAME, filename, temp_file_path)
+                        
+                        # Add file to ZIP
+                        zipf.write(temp_file_path, os.path.basename(filename))
+                        
+                        # Remove temporary file
+                        os.remove(temp_file_path)
+                
+                return send_file(
+                    zip_path,
+                    mimetype='application/zip',
+                    as_attachment=True,
+                    download_name=zip_filename
+                )
+                
         except S3Error as e:
             abort(500, message=str(e))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5001)
