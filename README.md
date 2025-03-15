@@ -36,7 +36,3 @@ Questo progetto ha l'obiettivo di integrare MinIO utilizzando Python e Flask com
 ## Contribuire
 
 Se desideri contribuire al progetto, sentiti libero di aprire una pull request o segnalare un problema.
-
-## Licenza
-
-Questo progetto è distribuito sotto la licenza MIT. Vedi il file [LICENSE](LICENSE) per maggiori dettagli.
